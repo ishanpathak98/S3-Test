@@ -11,10 +11,10 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    sh '''
+                    sh """
                     rm -rf repo
                     git clone $GIT_REPO repo
-                    '''
+                    """
                 }
             }
         }
@@ -22,12 +22,12 @@ pipeline {
         stage('Verify Repository') {
             steps {
                 script {
-                    sh '''
+                    sh """
                     if [ ! -d "repo" ]; then
                       echo "Error: Repository folder not found!"
                       exit 1
                     fi
-                    '''
+                    """
                 }
             }
         }
@@ -35,5 +35,20 @@ pipeline {
         stage('Sync to S3') {
             steps {
                 script {
-                    sh '''
+                    sh """
                     aws s3 sync repo s3://$S3_BUCKET --delete
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ GitHub repo successfully cloned and synced to S3!"
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs!"
+        }
+    }
+}
