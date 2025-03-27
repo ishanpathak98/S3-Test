@@ -9,7 +9,7 @@ pipeline {
     environment {
         BUCKET_NAME = "my-github-backup-bucket-${params.ENV}"
         AWS_REGION = "us-east-1"
-        S3_PATH = "${params.ENV}/file-folder/"  // Files will be uploaded inside this folder in S3
+        S3_PATH = "${params.ENV}/file-folder/"  // Ensures files go inside this folder
         REPO_URL = "https://github.com/ishanpathak98/S3-Test.git"
     }
 
@@ -44,7 +44,16 @@ pipeline {
             }
         }
 
-        stage('Sync to S3') {
+        stage('Create Folder in S3') {
+            steps {
+                script {
+                    echo "Creating folder structure in S3: s3://${BUCKET_NAME}/${S3_PATH}"
+                    sh "aws s3api put-object --bucket ${BUCKET_NAME} --key ${S3_PATH}"
+                }
+            }
+        }
+
+        stage('Sync Files to S3') {
             steps {
                 script {
                     echo "Uploading files to S3 bucket: s3://${BUCKET_NAME}/${S3_PATH}"
