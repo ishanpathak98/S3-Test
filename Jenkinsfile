@@ -16,7 +16,7 @@ pipeline {
                 script {
                     sh """
                     rm -rf repo
-                    git clone -b ${BRANCH_NAME} ${GIT_REPO} repo
+                    git clone -b ${params.BRANCH_NAME} ${env.GIT_REPO} repo
                     """
                 }
             }
@@ -25,12 +25,9 @@ pipeline {
         stage('Verify Repository') {
             steps {
                 script {
-                    sh """
-                    if [ ! -d "repo" ]; then
-                      echo "Error: Repository folder not found!"
-                      exit 1
-                    fi
-                    """
+                    if (!fileExists("repo")) {
+                        error "❌ Error: Repository folder not found!"
+                    }
                 }
             }
         }
@@ -38,7 +35,6 @@ pipeline {
         stage('Determine S3 Bucket') {
             steps {
                 script {
-                    // Map branch name to corresponding S3 bucket dynamically
                     def bucketMap = [
                         'main': 'my-github-backup-bucket-main',
                         'dev': 'my-github-backup-bucket-dev',
@@ -46,10 +42,10 @@ pipeline {
                         'prod': 'my-github-backup-bucket-prod'
                     ]
                     
-                    if (bucketMap.containsKey(BRANCH_NAME)) {
-                        env.S3_BUCKET = bucketMap[BRANCH_NAME]
+                    if (bucketMap.containsKey(params.BRANCH_NAME)) {
+                        env.S3_BUCKET = bucketMap[params.BRANCH_NAME]
                     } else {
-                        error("Invalid branch name. No S3 bucket mapped for ${BRANCH_NAME}")
+                        error("❌ Invalid branch name. No S3 bucket mapped for ${params.BRANCH_NAME}")
                     }
                 }
             }
@@ -59,7 +55,12 @@ pipeline {
             steps {
                 script {
                     sh """
-                    aws s3 sync repo s3://${S3_BUCKET} --delete
+                    if aws s3 ls "s3://${env.S3_BUCKET}" > /dev/null 2>&1; then
+                        aws s3 sync repo s3://${env.S3_BUCKET} --delete
+                    else
+                        echo "❌ S3 bucket ${env.S3_BUCKET} does not exist!"
+                        exit 1
+                    fi
                     """
                 }
             }
@@ -68,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo "GitHub repo successfully cloned from branch ${BRANCH_NAME} and synced to S3 bucket: ${S3_BUCKET}!"
+            echo "✅ GitHub repo successfully cloned from branch ${params.BRANCH_NAME} and synced to S3 bucket: ${env.S3_BUCKET}!"
         }
         failure {
-            echo "Pipeline failed. Check logs!"
+            echo "❌ Pipeline failed. Check logs!"
         }
     }
 }
