@@ -7,9 +7,9 @@ pipeline {
     }
 
     environment {
-        BUCKET_NAME = "my-github-backup-bucket-${params.ENV}"
+        BUCKET_NAME = "my-github-backup-bucket-test"  // FIXED: Single bucket for all environments
         AWS_REGION = "us-east-1"
-        S3_PATH = "${params.ENV}/file-folder/"  // Ensures files go inside this folder
+        S3_PATH = "${params.ENV}/files-folder/"  // Store files under the selected environment
         REPO_URL = "https://github.com/ishanpathak98/S3-Test.git"
     }
 
