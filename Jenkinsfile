@@ -37,9 +37,11 @@ pipeline {
         stage('Check S3 Bucket') {
             steps {
                 script {
-                    def bucketExists = sh(script: "aws s3api head-bucket --bucket ${S3_BUCKET} 2>/dev/null && echo 'exists' || echo ''", returnStdout: true).trim()
-                    if (!bucketExists) {
+                    def bucketExists = sh(script: "aws s3api head-bucket --bucket ${S3_BUCKET} 2>&1 || true", returnStdout: true).trim()
+                    if (bucketExists.contains("Not Found")) {
                         error "❌ S3 bucket ${S3_BUCKET} does not exist!"
+                    } else if (bucketExists.contains("Forbidden")) {
+                        error "❌ Access denied to S3 bucket ${S3_BUCKET}! Check IAM permissions."
                     }
                 }
             }
