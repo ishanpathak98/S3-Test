@@ -25,7 +25,8 @@ pipeline {
         stage('Verify Repository') {
             steps {
                 script {
-                    if (!fileExists("repo")) {
+                    def repoExists = sh(script: "[ -d repo ] && echo 'exists' || echo 'not found'", returnStdout: true).trim()
+                    if (repoExists != 'exists') {
                         error "❌ Error: Repository folder not found!"
                     }
                 }
@@ -43,7 +44,9 @@ pipeline {
                     ]
                     
                     if (bucketMap.containsKey(params.BRANCH_NAME)) {
-                        env.S3_BUCKET = bucketMap[params.BRANCH_NAME]
+                        withEnv(["S3_BUCKET=${bucketMap[params.BRANCH_NAME]}"]) {
+                            echo "✅ S3 Bucket set to ${env.S3_BUCKET}"
+                        }
                     } else {
                         error("❌ Invalid branch name. No S3 bucket mapped for ${params.BRANCH_NAME}")
                     }
@@ -54,14 +57,14 @@ pipeline {
         stage('Sync to S3') {
             steps {
                 script {
-                    sh """
-                    if aws s3 ls "s3://${env.S3_BUCKET}" > /dev/null 2>&1; then
-                        aws s3 sync repo s3://${env.S3_BUCKET} --delete
-                    else
-                        echo "❌ S3 bucket ${env.S3_BUCKET} does not exist!"
-                        exit 1
-                    fi
-                    """
+                    withEnv(["S3_BUCKET=${env.S3_BUCKET}"]) {
+                        def s3Exists = sh(script: "aws s3 ls s3://${env.S3_BUCKET} > /dev/null 2>&1 && echo 'exists' || echo 'not found'", returnStdout: true).trim()
+                        if (s3Exists != 'exists') {
+                            error "❌ S3 bucket ${env.S3_BUCKET} does not exist!"
+                        }
+
+                        sh "aws s3 sync repo s3://${env.S3_BUCKET} --delete"
+                    }
                 }
             }
         }
