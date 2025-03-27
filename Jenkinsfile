@@ -2,21 +2,23 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ENV', choices: ['prod', 'dev', 'test'], description: 'Select Environment')
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Enter the branch name (e.g., feature/master)')
+        choice(name: 'ENV', choices: ['prod', 'stage', 'dev', 'test'], description: 'Select Environment')
     }
 
     environment {
         BUCKET_NAME = "my-github-backup-bucket-${params.ENV}"
         AWS_REGION = "us-east-1"
+        S3_PATH = "${params.ENV}/file-folder/"  // Files will be uploaded inside this folder in S3
+        REPO_URL = "https://github.com/ishanpathak98/S3-Test.git"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 script {
-                    // Clone the GitHub repo based on the selected branch
                     sh "rm -rf repo"
-                    sh "git clone -b ${params.ENV} https://github.com/ishanpathak98/S3-Test.git repo"
+                    sh "git clone -b ${params.BRANCH} ${REPO_URL} repo"
                 }
             }
         }
@@ -45,7 +47,8 @@ pipeline {
         stage('Sync to S3') {
             steps {
                 script {
-                    sh "aws s3 sync repo/ s3://${BUCKET_NAME}/ --region ${AWS_REGION}"
+                    echo "Uploading files to S3 bucket: s3://${BUCKET_NAME}/${S3_PATH}"
+                    sh "aws s3 sync repo/ s3://${BUCKET_NAME}/${S3_PATH} --region ${AWS_REGION}"
                 }
             }
         }
@@ -53,7 +56,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Successfully synced to S3: ${BUCKET_NAME}"
+            echo "✅ Successfully synced ${params.BRANCH} branch to S3: s3://${BUCKET_NAME}/${S3_PATH}"
         }
         failure {
             echo "❌ Pipeline failed for ${params.ENV}. Check logs!"
