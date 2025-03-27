@@ -49,7 +49,7 @@ pipeline {
                     if (bucketMap.containsKey(BRANCH_NAME)) {
                         env.S3_BUCKET = bucketMap[BRANCH_NAME]
                     } else {
-                        error("❌ Invalid branch name. No S3 bucket mapped for ${BRANCH_NAME}")
+                        error("Invalid branch name. No S3 bucket mapped for ${BRANCH_NAME}")
                     }
                 }
             }
@@ -68,10 +68,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ GitHub repo successfully cloned from branch ${BRANCH_NAME} and synced to S3 bucket: ${S3_BUCKET}!"
+            echo "GitHub repo successfully cloned from branch ${BRANCH_NAME} and synced to S3 bucket: ${S3_BUCKET}!"
         }
         failure {
-            echo "❌ Pipeline failed. Check logs!"
+            echo "Pipeline failed. Check logs!"
         }
     }
 }
