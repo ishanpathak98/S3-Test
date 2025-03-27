@@ -1,8 +1,12 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENV', choices: ['dev', 'test', 'prod'], description: 'Select the target environment')
+    }
+
     environment {
-        S3_BUCKET = "my-github-backup-bucket-test"
+        S3_BUCKET = "my-github-backup-bucket-${params.ENV}"
         REPO_URL = "https://github.com/ishanpathak98/S3-Test.git"
         BRANCH = "main"
         LOCAL_REPO = "repo"
@@ -46,7 +50,7 @@ pipeline {
                 script {
                     sh """
                         aws s3 sync ${LOCAL_REPO} s3://${S3_BUCKET}/ --delete
-                        echo "✅ Sync to S3 completed successfully!"
+                        echo "✅ Sync to S3 (${ENV}) completed successfully!"
                     """
                 }
             }
@@ -55,10 +59,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline executed successfully!"
+            echo "✅ Pipeline executed successfully for ${ENV}!"
         }
         failure {
-            echo "❌ Pipeline failed. Check logs!"
+            echo "❌ Pipeline failed for ${ENV}. Check logs!"
         }
     }
 }
