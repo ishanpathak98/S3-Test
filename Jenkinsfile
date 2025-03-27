@@ -37,7 +37,7 @@ pipeline {
         stage('Check S3 Bucket') {
             steps {
                 script {
-                    def bucketExists = sh(script: "aws s3 ls | grep ${S3_BUCKET} || true", returnStdout: true).trim()
+                    def bucketExists = sh(script: "aws s3api head-bucket --bucket ${S3_BUCKET} 2>/dev/null && echo 'exists' || echo ''", returnStdout: true).trim()
                     if (!bucketExists) {
                         error "❌ S3 bucket ${S3_BUCKET} does not exist!"
                     }
@@ -50,7 +50,7 @@ pipeline {
                 script {
                     sh """
                         aws s3 sync ${LOCAL_REPO} s3://${S3_BUCKET}/ --delete
-                        echo "✅ Sync to S3 (${ENV}) completed successfully!"
+                        echo "✅ Sync to S3 (${params.ENV}) completed successfully!"
                     """
                 }
             }
@@ -59,10 +59,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline executed successfully for ${ENV}!"
+            echo "✅ Pipeline executed successfully for ${params.ENV}!"
         }
         failure {
-            echo "❌ Pipeline failed for ${ENV}. Check logs!"
+            echo "❌ Pipeline failed for ${params.ENV}. Check logs!"
         }
     }
 }
