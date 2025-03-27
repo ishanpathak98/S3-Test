@@ -2,24 +2,21 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ENV', choices: ['dev', 'test', 'prod'], description: 'Select the target environment')
+        choice(name: 'ENV', choices: ['prod', 'dev', 'test'], description: 'Select Environment')
     }
 
     environment {
-        S3_BUCKET = "my-github-backup-bucket-${params.ENV}"
-        REPO_URL = "https://github.com/ishanpathak98/S3-Test.git"
-        BRANCH = "main"
-        LOCAL_REPO = "repo"
+        BUCKET_NAME = "my-github-backup-bucket-${params.ENV}"
+        AWS_REGION = "us-east-1"
     }
 
     stages {
-        stage('Clone Repository') {
+        stage('Checkout Code') {
             steps {
                 script {
-                    sh """
-                        rm -rf ${LOCAL_REPO}
-                        git clone -b ${BRANCH} ${REPO_URL} ${LOCAL_REPO}
-                    """
+                    // Clone the GitHub repo based on the selected branch
+                    sh "rm -rf repo"
+                    sh "git clone -b ${params.ENV} https://github.com/ishanpathak98/S3-Test.git repo"
                 }
             }
         }
@@ -27,8 +24,8 @@ pipeline {
         stage('Verify Repository') {
             steps {
                 script {
-                    if (!fileExists("${LOCAL_REPO}")) {
-                        error "❌ Repository clone failed!"
+                    if (!fileExists('repo')) {
+                        error "❌ Cloning failed. Repository not found!"
                     }
                 }
             }
@@ -37,11 +34,9 @@ pipeline {
         stage('Check S3 Bucket') {
             steps {
                 script {
-                    def bucketExists = sh(script: "aws s3api head-bucket --bucket ${S3_BUCKET} 2>&1 || true", returnStdout: true).trim()
-                    if (bucketExists.contains("Not Found")) {
-                        error "❌ S3 bucket ${S3_BUCKET} does not exist!"
-                    } else if (bucketExists.contains("Forbidden")) {
-                        error "❌ Access denied to S3 bucket ${S3_BUCKET}! Check IAM permissions."
+                    def bucketExists = sh(script: "aws s3api head-bucket --bucket ${BUCKET_NAME}", returnStatus: true)
+                    if (bucketExists != 0) {
+                        error "❌ S3 bucket ${BUCKET_NAME} does not exist!"
                     }
                 }
             }
@@ -50,10 +45,7 @@ pipeline {
         stage('Sync to S3') {
             steps {
                 script {
-                    sh """
-                        aws s3 sync ${LOCAL_REPO} s3://${S3_BUCKET}/ --delete
-                        echo "✅ Sync to S3 (${params.ENV}) completed successfully!"
-                    """
+                    sh "aws s3 sync repo/ s3://${BUCKET_NAME}/ --region ${AWS_REGION}"
                 }
             }
         }
@@ -61,7 +53,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline executed successfully for ${params.ENV}!"
+            echo "✅ Successfully synced to S3: ${BUCKET_NAME}"
         }
         failure {
             echo "❌ Pipeline failed for ${params.ENV}. Check logs!"
